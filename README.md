@@ -82,9 +82,14 @@ Check connectivity of your miner:
 ```
 $ docker exec miner miner peer book -s
 ```
-Check the current running miner version
+check the current running miner version
 ```
-$ docker container inspect -f '{{.Config.Image}}' miner | awk -F: '{print $2}'
+$ docker container inspect -f '{{.config.image}}' miner | awk -f: '{print $2}'
+```
+
+Monitor progress of your miner in syncing the blockchain and record progress to file
+```
+$ ./monitor_blockchain_progress.sh
 ```
 
 # If this guide helped you please consider donating HNT the following address
