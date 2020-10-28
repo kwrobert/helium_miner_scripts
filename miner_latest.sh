@@ -8,6 +8,7 @@ REGION=US915
 GWPORT=1680
 MINERPORT=44158
 DATADIR=/home/pi/miner_data
+USE_DEV=true
 
 # Make sure we have the latest version of the script
 function update-git {
@@ -26,6 +27,7 @@ do
       p) MINERPORT=${OPTARG};;
       d) DATADIR=${OPTARG};;
       r) REGION=${OPTARG};;
+      l) USE_DEV=true;;
       *) echo "Exiting"; exit;;
    esac
 done
@@ -56,7 +58,11 @@ if [[ $miner_response -ne 200 ]];
 	exit 0
 fi
 
-miner_latest=$(echo "$miner_quay" | grep -v HTTP_Response | jq -c --arg ARCH "$ARCH" '[ .tags[] | select( .name | contains($ARCH)and contains("GA")) ][0].name' | cut -d'"' -f2)
+if [ "$USE_DEV" = true]; then
+  miner_latest="latest-$ARCH64"
+else
+  miner_latest=$(echo "$miner_quay" | grep -v HTTP_Response | jq -c --arg ARCH "$ARCH" '[ .tags[] | select( .name | contains($ARCH)and contains("GA")) ][0].name' | cut -d'"' -f2)
+fi
 
 echo "$(date)"
 echo "$0 starting with MINER=$MINER GWPORT=$GWPORT MINERPORT=$MINERPORT DATADIR=$DATADIR REGION=$REGION"
