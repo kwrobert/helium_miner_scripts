@@ -19,7 +19,7 @@ function update-git {
 command -v jq > /dev/null || sudo apt-get install jq curl -y
 
 # Read switches to override any default values for non-standard configs
-while getopts n:g:p:d:r: flag
+while getopts n:g:p:d:r:l: flag
 do
    case "${flag}" in
       n) MINER=${OPTARG};;
@@ -58,7 +58,7 @@ if [[ $miner_response -ne 200 ]];
 	exit 0
 fi
 
-if [ "$USE_DEV" = true]; then
+if [ "$USE_DEV" = true ]; then
   miner_latest="latest-$ARCH64"
 else
   miner_latest=$(echo "$miner_quay" | grep -v HTTP_Response | jq -c --arg ARCH "$ARCH" '[ .tags[] | select( .name | contains($ARCH)and contains("GA")) ][0].name' | cut -d'"' -f2)
