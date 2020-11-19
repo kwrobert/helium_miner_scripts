@@ -8,7 +8,7 @@ REGION=US915
 GWPORT=1680
 MINERPORT=44158
 DATADIR=/home/pi/miner_data
-USE_DEV=true
+USE_DEV=false
 
 # Make sure we have the latest version of the script
 function update-git {
@@ -27,13 +27,14 @@ do
       p) MINERPORT=${OPTARG};;
       d) DATADIR=${OPTARG};;
       r) REGION=${OPTARG};;
-      l) USE_DEV=true;;
+      l) USE_DEV=false;;
       *) echo "Exiting"; exit;;
    esac
 done
 
 # Autodetect running image version and set arch
 running_image=$(docker container inspect -f '{{.Config.Image}}' "$MINER" | awk -F: '{print $2}')
+echo "Current running miner image: $running_image"
 if [ -z "$running_image" ]; then
 	ARCH=arm
 elif [ "$(echo "$running_image" | awk -F_ '{print $1}')" == "miner-arm64" ]; then
@@ -45,6 +46,7 @@ else
 	#below is just to make it not null.
 	running_image=" "
 fi
+echo "Running ARCH: $ARCH"
 
 #miner_latest=$(curl -s 'https://quay.io/api/v1/repository/team-helium/miner/tag/?limit=100&page=1&onlyActiveTags=true' | jq -c --arg ARCH "$ARCH" '[ .tags[] | select( .name | contains($ARCH)) ][0].name' | cut -d'"' -f2)
 
@@ -64,27 +66,31 @@ else
   miner_latest=$(echo "$miner_quay" | grep -v HTTP_Response | jq -c --arg ARCH "$ARCH" '[ .tags[] | select( .name | contains($ARCH)and contains("GA")) ][0].name' | cut -d'"' -f2)
 fi
 
+echo "Latest miner image: $miner_latest"
+
 echo "$(date)"
 echo "$0 starting with MINER=$MINER GWPORT=$GWPORT MINERPORT=$MINERPORT DATADIR=$DATADIR REGION=$REGION"
 
 #check to see if the miner is more than 50 block behind
-current_height=$(curl -s https://api.helium.io/v1/blocks/height | jq .data.height) && sleep 2 ;miner_height=$(docker exec "$MINER" miner info height | awk '{print $2}');height_diff=$(expr "$current_height" - "$miner_height")
+current_height=$(curl -s https://api.helium.io/v1/blocks/height | jq .data.height) && sleep 2
+miner_height=$(docker exec "$MINER" miner info height | awk '{print $2}')
+height_diff=$(expr "$current_height" - "$miner_height")
 
 if [[ $height_diff -gt 50 ]]; then docker stop "$MINER" && docker start "$MINER" ; fi
 
 #If the miner is more than 500 blocks behind, stop the image, remove the container, remove the image. It will be redownloaded later in the script.
 if [[ $height_diff -gt 500 ]]; then docker stop "$MINER" && docker rm "$MINER" && docker image rm "$miner_latest" ; fi
 
-if echo "$miner_latest" | grep -q $ARCH;
-then echo "Latest miner version $miner_latest";
-elif miner_latest=$(curl -s 'https://quay.io/api/v1/repository/team-helium/miner/tag/?limit=100&page=1&onlyActiveTags=true' | jq -r .tags[1].name)
-then echo "Latest miner version $miner_latest";
+if echo "$miner_latest" | grep -q $ARCH; then 
+  echo "Latest miner version $miner_latest"
+elif miner_latest=$(curl -s 'https://quay.io/api/v1/repository/team-helium/miner/tag/?limit=100&page=1&onlyActiveTags=true' | jq -r .tags[1].name); then 
+  echo "Latest miner version $miner_latest";
 fi
 
-if [ "$miner_latest" = "$running_image" ];
-then    echo "already on the latest version"
-	update-git
-        exit 0
+if [ "$miner_latest" = "$running_image" ]; then
+  echo "already on the latest version"
+  update-git
+  exit 0
 fi
 
 # Pull the new miner image. Downloading it now will minimize miner downtime after stop.
