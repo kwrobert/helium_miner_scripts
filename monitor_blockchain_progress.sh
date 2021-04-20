@@ -28,5 +28,5 @@ while true; do
   echo "$datetime,$miner_height,$current_height" >> /home/pi/miner_data/block_times.txt
 	
   # Be nice to the helium API
-  sleep $(shuf -i 5-30 -n 1)
+  #sleep $(shuf -i 5-8 -n 1)
 done 
